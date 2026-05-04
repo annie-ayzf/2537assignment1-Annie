@@ -9,7 +9,7 @@ const saltRounds = 12;
 const app = express();
 app.use(express.static(__dirname + '/public'));
 
-const Joi = require('Joi');
+const Joi = require('joi');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const PORT = process.env.PORT || 3000;
