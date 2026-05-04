@@ -53,7 +53,8 @@ var mongoStore = MongoStore.create({
     mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_session_database}`,
     crypto: {
         secret: mongodb_session_secret
-    }
+    },
+    ttl: 60 * 60;
 });
 
 //turns on session. what allows login to be remembered
@@ -61,7 +62,10 @@ app.use(session({
     secret: node_session_secret,
     store: mongoStore,
     saveUninitialized: false,
-    resave: true
+    resave: false,
+    cookie: {
+        maxAge: expireTime
+    }
 }
 ));
 
@@ -198,7 +202,7 @@ app.post('/loggingin', async (req, res) => {
         req.session.authenticated = true;
         req.session.email = email;
         req.session.name = result[0].name;
-        req.session.maxAge = expireTime;
+        req.session.cookie.maxAge = expireTime;
 
         res.redirect('/members');
         return;
