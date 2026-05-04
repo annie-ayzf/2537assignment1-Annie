@@ -54,7 +54,7 @@ var mongoStore = MongoStore.create({
     crypto: {
         secret: mongodb_session_secret
     },
-    ttl: 60 * 60;
+    ttl: 60 * 60
 });
 
 //turns on session. what allows login to be remembered
