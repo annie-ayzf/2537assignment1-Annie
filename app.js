@@ -13,7 +13,7 @@ const Joi = require('joi');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const PORT = process.env.PORT || 3000;
-const expireTime = 60 * 60 * 1000; // expire after 1 hour
+const expireTime = 1 * 60 * 60 * 1000; // expire after 1 hour
 
 //Secret section
 const mongodb_host = process.env.MONGODB_HOST;
