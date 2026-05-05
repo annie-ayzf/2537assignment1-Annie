@@ -14,6 +14,6 @@ Self-graded Assignment 1 Checklist
 [x]  A 404 page that "catches" all invalid page hits and that sets the status code to 404.
 [x]  Session information is stored in an encrypted MongoDB session database. Sessions expire after 1 hour.
  
-/50 (Total grade out of 50, 5 marks each x 10 items)
+50/50 (Total grade out of 50, 5 marks each x 10 items)
 
 *Note items are considered *fully* complete (marked with an x inside the box: [x]), OR incomplete (box is left empty: [ ])
