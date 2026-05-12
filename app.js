@@ -5,6 +5,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo').default;
 const bcrypt = require('bcrypt');
 const saltRounds = 12;
+const { ObjectId } = require('mongodb');
 
 const app = express();
 app.use(express.static(__dirname + '/public'));
@@ -12,7 +13,7 @@ app.use(express.static(__dirname + '/public'));
 const Joi = require('joi');
 const mongoSanitize = require('express-mongo-sanitize');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const expireTime = 1 * 60 * 60 * 1000; // expire after 1 hour
 
 //Secret section
@@ -28,6 +29,8 @@ const node_session_secret = process.env.NODE_SESSION_SECRET;
 //load database connection
 const {database} = include(`databaseConnection`);
 const userCollection = database.db(mongodb_user_database).collection('users');
+
+app.set('view engine', 'ejs');
 
 //express read form data and JSON data from requests.
 app.use(express.urlencoded({extended: false}));
@@ -69,44 +72,66 @@ app.use(session({
 }
 ));
 
+//checks if user is logged in
+function isValidSession(req) {
+    if (req.session.authenticated) {
+        return true;
+    }
+    return false;
+}
+
+//Creates middleware to protect routes
+function sessionValidation(redirectPath) {
+    return function(req, res, next) {
+        if (isValidSession(req)) {
+            next();
+        } else {
+            res.redirect(redirectPath);
+        }
+    }
+}
+
+//check if it is Admin
+function isAdmin(req) {
+    if (req.session.user_type == 'admin') {
+        return true;
+    }
+    return false;
+}
+
+
+//middleware for admin only pages
+function adminAuthroization(req, res, next) {
+    if(!isAdmin(req)) {
+        res.status(403);
+        res.render("errormessage", {error: "Not Authorized"});
+        return;
+    }
+    else {
+        next();
+    }
+}
+
+
+
 
 //routes
 app.get('/', (req, res) => {
-    if (req.session.authenticated) {
-        res.send(`
-            <h1>Hello, ${req.session.name}!</h1>
-            <a href='/members'><button>Go to Members Area</button></a>
-            <a href='/logout'><button>Logout</button></a>
-        `)
-    } else {
-        res.send(`
-            <a href="/signup"> <button> Sign Up </button></a>
-            <br>
-            <a href="/login"> <button> Log In </button></a>
-        `);
-    }
-    
+    res.render("index", {
+        authenticated: isValidSession(req),
+        name: req.session.name
+    });
 });
 
 //sign up page
 app.get('/signup', (req, res) => {
-    if(req.session.authenticated){
+    if (isValidSession(req)) {
         res.redirect('/members');
         return;
-    } else {
-        var html = `
-            create user
-            <form action='/signupping' method='post'>
-            <input name='name' type='text' placeholder='name'>
-            <input name='email' type='email' placeholder='email'>
-            <input name='password' type='password' placeholder='password'>
-            <button>Submit</button>
-            </form>
-        `;
-        res.send(html);
-
     }
-   
+    
+    res.render("signup");
+
 });
 
 app.post('/signupping', async (req, res) => {
@@ -146,7 +171,7 @@ app.post('/signupping', async (req, res) => {
 
     var hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    await userCollection.insertOne({name: name, email: email, password: hashedPassword});
+    await userCollection.insertOne({name: name, email: email, password: hashedPassword, user_type: 'user'});
 
     req.session.authenticated = true;
     req.session.name = name;
@@ -157,24 +182,14 @@ app.post('/signupping', async (req, res) => {
 
 });
 
-
 //login page
 app.get('/login', (req, res) => {
-    if(req.session.authenticated){
-        res.redirect("/members");
+    if (isValidSession(req)) {
+        res.redirect('/members');
         return;
-    } else {
-        var html = `
-            log in
-            <form action='/loggingin' method='post'>
-            <input name='email' type='email' placeholder='email'>
-            <input name='password' type='password' placeholder='password'>
-            <button>Submit</button>
-            </form>
-        `;
-
-        res.send(html);
     }
+
+    res.render("login");
 });
 
 app.post('/loggingin', async (req, res) => {
@@ -190,7 +205,7 @@ app.post('/loggingin', async (req, res) => {
         res.redirect("/login");
     }
 
-    const result = await userCollection.find({email: email}).project({email: 1, password: 1, name: 1, _id: 1}).toArray();
+    const result = await userCollection.find({email: email}).project({email: 1, password: 1, name: 1, user_type: 1, _id: 1}).toArray();
 
     console.log(result);
     if(result.length != 1) {
@@ -202,6 +217,7 @@ app.post('/loggingin', async (req, res) => {
         req.session.authenticated = true;
         req.session.email = email;
         req.session.name = result[0].name;
+        req.session.user_type = result[0].user_type;
         req.session.cookie.maxAge = expireTime;
 
         res.redirect('/members');
@@ -214,29 +230,50 @@ app.post('/loggingin', async (req, res) => {
     }
 });
 
-
 //members page
-app.get('/members', (req, res) => {
-    if(req.session.authenticated){
-        const name = req.session.name;
+app.get('/members', sessionValidation("/"), (req, res) => {
+    const name = req.session.name;
 
-        //random images
-        const images = ['image1.webp', 'image2.jpg', 'image3.avif'];
-        const randomImage = images[Math.floor(Math.random() * images.length)];
+    const images = ['image1.webp', 'image2.jpg', 'image3.avif'];
 
-        var html = `
-            <h1>Hello, ${name}.</h1>
-            <img src="/${randomImage}" width="300">
-            <br>
-            <a href='/logout'><button>Sign out</button></a>
-        `;
-        res.send(html);
+    res.render('members', {
+        name: name,
+        images: images
+    });
 
-    } else {
-        res.redirect('/');
-    }
     
 
+});
+
+//admins page
+app.get('/admin', sessionValidation("/login"), adminAuthroization, async (req, res) => {
+    //get all users from databse
+    const result = await userCollection.find().project({name: 1, user_type: 1, _id: 1}).toArray();
+
+    res.render("admin", {users: result});
+
+});
+
+app.post('/promote/:id', sessionValidation("/login"), adminAuthroization, async (req, res) => {
+    const userId = req.params.id;
+
+    await userCollection.updateOne(
+        { _id: new ObjectId(userId) }, //means find the document where _id equlas this object
+        { $set: { user_type: "admin" } }
+    )
+
+    res.redirect('/admin');
+});
+
+app.post('/demote/:id', sessionValidation("/login"), adminAuthroization, async (req, res) => {
+    const userId = req.params.id;
+
+    await userCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        {$set: { user_type: "user" } }
+    )
+
+    res.redirect('/admin');
 });
 
 //log out
@@ -249,7 +286,7 @@ app.get('/logout', (req, res) => {
 //404
 app.use((req, res) => {
     res.status(404);
-    res.send("Page not found - 404");
+    res.render("404");
 })
 
 

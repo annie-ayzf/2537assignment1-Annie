@@ -1,0 +1,16 @@
+<%- include("templates/header") %>
+
+<h1>Hello, <%= name %>!</h1>
+
+<div class="image-gallery">
+    <% for (let image of images) { %>
+        <img src="/<%= image %>" width="300">
+    <% } %>
+</div>
+
+<div class="button-group">
+    <a href='/logout'><button class="btn btn-primary py-2">Sign out</button></a>
+</div>
+
+
+<%- include("templates/footer") %>

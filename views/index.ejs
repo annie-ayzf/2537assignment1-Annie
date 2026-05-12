@@ -1,0 +1,19 @@
+<%- include("templates/header") %>
+
+<% if (authenticated) { %>
+        <h1>Hello, <%= name %>!</h1>
+        <div class="button-group">
+            <a href='/members' class="main-btn"><button class="btn btn-primary py-2">Go to Members Area</button></a>
+            <a href='/logout' class="main-btn"><button class="btn btn-primary py-2">Logout</button></a>
+        </div>
+        
+    <% } else { %>
+        <div class="button-group">
+            <a href="/signup"> <button class="btn btn-primary py-2"> Sign Up </button></a>
+
+            <a href="/login"> <button class="btn btn-primary py-2"> Log In </button></a>
+        </div>
+    <% } %>
+    
+
+<%- include("templates/footer") %>
